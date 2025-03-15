@@ -12,6 +12,7 @@ The game was made using Majority of Github Copilot Agents, and with the idea to 
 - Game statistics tracking (moves and time)
 - Game completion detection
 - Ability to reset or start a new game
+- Data persistence using Supabase for storage
 
 ## Project Structure
 
@@ -21,8 +22,12 @@ copilot-instructions.md
 LICENSE
 package.json
 tsconfig.json
+supabase-setup.sql
+supabase-deployment.md
 src/
 	index.ts
+	config/
+		supabase.ts
 	controllers/
 		gameController.ts
 	models/
@@ -37,6 +42,8 @@ src/
 			game.js
 	routes/
 		gameRoutes.ts
+	services/
+		databaseService.ts
 ```
 
 ## Getting Started
@@ -45,6 +52,7 @@ src/
 
 - Node.js (v14 or higher)
 - npm (v6 or higher)
+- Supabase account (for persistence and deployment)
 
 ### Installation
 
@@ -61,13 +69,29 @@ $ cd MiloMemory
 $ npm install
 ```
 
-3. Build the TypeScript code:
+3. Set up your Supabase project:
+   - Create a new Supabase project from the [Supabase dashboard](https://app.supabase.com)
+   - Run the SQL commands from `supabase-setup.sql` in the SQL editor
+   - Create a storage bucket named `game-images` with public access
+   - Copy your Supabase URL and API key from Project Settings > API
+
+4. Create a `.env` file in the root directory with your Supabase credentials:
+
+```
+SUPABASE_URL=https://[YOUR_SUPABASE_PROJECT_ID].supabase.co
+SUPABASE_KEY=[YOUR_SUPABASE_API_KEY]
+SUPABASE_PROJECT_NAME=MiloMemory
+SUPABASE_DB_PASSWORD=MiloMia
+PORT=3000
+```
+
+5. Build the TypeScript code:
 
 ```sh
 $ npm run build
 ```
 
-4. Start the server:
+6. Start the server:
 
 - For development mode with hot-reloading:
 
@@ -81,7 +105,11 @@ $ npm run dev
 $ npm start
 ```
 
-5. Open your web browser and navigate to `http://localhost:3000` to play the game.
+7. Open your web browser and navigate to `http://localhost:3000` to play the game.
+
+## Deployment
+
+For detailed deployment instructions, please refer to the [Supabase Deployment Guide](supabase-deployment.md).
 
 ## Usage
 

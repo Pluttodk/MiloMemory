@@ -11,18 +11,21 @@ export class Game {
   public moves: number;
   public startTime: Date | null;
   public endTime: Date | null;
+  public userId: string | null;
 
   /**
    * Creates a new game instance
    * @param images Array of image URLs for the game
+   * @param userId Optional user ID who owns this game
    */
-  constructor(images: string[]) {
+  constructor(images: string[], userId: string | null = null) {
     this.id = uuidv4();
     this.cards = this.createCards(images);
     this.isComplete = false;
     this.moves = 0;
     this.startTime = null;
     this.endTime = null;
+    this.userId = userId;
   }
 
   /**
@@ -96,11 +99,28 @@ export class Game {
   public checkCompletion(): boolean {
     const allMatched = this.cards.every(card => card.isMatched);
     
-    if (allMatched && !this.isComplete) {
+    if (allMatched) {
       this.end();
+      this.isComplete = true;
     }
     
     return allMatched;
+  }
+  
+  /**
+   * Gets the number of matched pairs
+   * @returns Number of matched pairs
+   */
+  public getMatchedPairsCount(): number {
+    return this.cards.filter(card => card.isMatched).length / 2;
+  }
+
+  /**
+   * Gets the total number of pairs in the game
+   * @returns Total number of pairs
+   */
+  public getTotalPairsCount(): number {
+    return this.cards.length / 2;
   }
 
   /**

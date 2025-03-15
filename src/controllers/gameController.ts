@@ -4,9 +4,9 @@ import path from 'path';
 import fs from 'fs';
 import { UploadedFile } from 'express-fileupload';
 import { Game } from '../models/Game';
-
-// In-memory storage for games
-const games: Map<string, Game> = new Map();
+import { DatabaseService } from '../services/databaseService';
+import { AuthService } from '../services/authService';
+import { supabase } from '../config/supabase';
 
 /**
  * Controller for handling memory game operations
@@ -17,71 +17,68 @@ export class GameController {
    * @param req Express request object
    * @param res Express response object
    */
-  public static uploadImages(req: Request, res: Response): void {
+  public static async uploadImages(req: Request, res: Response): Promise<void> {
     try {
-      if (!req.files || Object.keys(req.files).length === 0) {
-        res.status(400).json({ 
-          success: false, 
-          message: 'No files were uploaded.' 
-        });
-        return;
-      }
-      
-      const uploadedFiles = req.files.images;
-      const uploadedImages: string[] = [];
-      
-      // Handle single file upload
-      if (!Array.isArray(uploadedFiles)) {
-        const fileName = `${uuidv4()}${path.extname(uploadedFiles.name)}`;
-        const uploadPath = path.join(__dirname, '..', 'public', 'uploads', fileName);
-        
-        uploadedFiles.mv(uploadPath, (err) => {
-          if (err) {
-            return res.status(500).json({ 
-              success: false, 
-              message: 'Error uploading file',
-              error: err 
-            });
-          }
-        });
-        
-        uploadedImages.push(`/uploads/${fileName}`);
-      } else {
-        // Handle multiple file uploads
-        uploadedFiles.forEach((file: UploadedFile) => {
-          const fileName = `${uuidv4()}${path.extname(file.name)}`;
-          const uploadPath = path.join(__dirname, '..', 'public', 'uploads', fileName);
-          
-          file.mv(uploadPath, (err) => {
-            if (err) {
-              return res.status(500).json({ 
+        if (!req.files || Object.keys(req.files).length === 0) {
+            res.status(400).json({ 
                 success: false, 
-                message: 'Error uploading file',
-                error: err 
-              });
+                message: 'No files were uploaded.' 
+            });
+            return;
+        }
+        
+        // Get current user if authenticated
+        const user = await AuthService.getCurrentUser();
+        const userId = user ? user.id : null;
+        
+        const uploadedFiles = req.files.images;
+        const uploadedImages: string[] = [];
+        
+        // Handle single or multiple file uploads
+        const files = Array.isArray(uploadedFiles) ? uploadedFiles : [uploadedFiles];
+        
+        for (const file of files) {
+            const fileName = `${uuidv4()}${path.extname(file.name)}`;
+            
+            // Direct upload to Supabase Storage
+            const { data, error } = await supabase.storage
+                .from('game-images')
+                .upload(`uploads/${fileName}`, file.data, {
+                    contentType: file.mimetype,
+                    upsert: true
+                });
+                
+            if (error) {
+                throw error;
             }
-          });
-          
-          uploadedImages.push(`/uploads/${fileName}`);
+            
+            // Get public URL
+            const { data: urlData } = supabase.storage
+                .from('game-images')
+                .getPublicUrl(`uploads/${fileName}`);
+                
+            uploadedImages.push(urlData.publicUrl);
+        }
+        
+        // Create a new game with the uploaded images and user ID
+        const game = new Game(uploadedImages, userId);
+        
+        // Save game to database
+        await DatabaseService.saveGame(game);
+        
+        res.status(200).json({
+            success: true,
+            gameId: game.id,
+            message: 'Files uploaded successfully',
+            imageCount: uploadedImages.length
         });
-      }
-      
-      // Create a new game with the uploaded images
-      const game = new Game(uploadedImages);
-      games.set(game.id, game);
-      
-      res.status(200).json({
-        success: true,
-        gameId: game.id,
-        message: 'Files uploaded successfully',
-        imageCount: uploadedImages.length
-      });
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Error processing upload',
-        error: error
-      });
+        console.error('Error in uploadImages:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error processing upload',
+            error: error
+        });
     }
   }
 
@@ -90,7 +87,7 @@ export class GameController {
    * @param req Express request object
    * @param res Express response object
    */
-  public static createGame(req: Request, res: Response): void {
+  public static async createGame(req: Request, res: Response): Promise<void> {
     try {
       const { images } = req.body;
       
@@ -102,10 +99,16 @@ export class GameController {
         return;
       }
       
+      // Get current user if authenticated
+      const user = await AuthService.getCurrentUser();
+      const userId = user ? user.id : null;
+      
       // Create a new game
-      const game = new Game(images);
+      const game = new Game(images, userId);
       game.start();
-      games.set(game.id, game);
+      
+      // Save game to database
+      await DatabaseService.saveGame(game);
       
       res.status(201).json({
         success: true,
@@ -113,6 +116,7 @@ export class GameController {
         cards: game.cards
       });
     } catch (error) {
+      console.error('Error in createGame:', error);
       res.status(500).json({
         success: false,
         message: 'Error creating game',
@@ -126,10 +130,12 @@ export class GameController {
    * @param req Express request object
    * @param res Express response object
    */
-  public static getGame(req: Request, res: Response): void {
+  public static async getGame(req: Request, res: Response): Promise<void> {
     try {
       const { gameId } = req.params;
-      const game = games.get(gameId);
+      
+      // Get game from database
+      const game = await DatabaseService.getGame(gameId);
       
       if (!game) {
         res.status(404).json({
@@ -146,13 +152,50 @@ export class GameController {
           cards: game.cards,
           moves: game.moves,
           isComplete: game.isComplete,
-          elapsedTime: game.getElapsedTime()
+          elapsedTime: game.getElapsedTime(),
+          userId: game.userId
         }
       });
     } catch (error) {
+      console.error('Error in getGame:', error);
       res.status(500).json({
         success: false,
         message: 'Error retrieving game',
+        error: error
+      });
+    }
+  }
+
+  /**
+   * Gets all games for the current user
+   * @param req Express request object
+   * @param res Express response object
+   */
+  public static async getUserGames(req: Request, res: Response): Promise<void> {
+    try {
+      // Get current user if authenticated
+      const user = await AuthService.getCurrentUser();
+      
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          message: 'Not authenticated'
+        });
+        return;
+      }
+      
+      // Get user games from database
+      const games = await DatabaseService.getUserGames(user.id);
+      
+      res.status(200).json({
+        success: true,
+        games: games
+      });
+    } catch (error) {
+      console.error('Error in getUserGames:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error retrieving user games',
         error: error
       });
     }
@@ -163,10 +206,12 @@ export class GameController {
    * @param req Express request object
    * @param res Express response object
    */
-  public static flipCard(req: Request, res: Response): void {
+  public static async flipCard(req: Request, res: Response): Promise<void> {
     try {
       const { gameId, cardId } = req.params;
-      const game = games.get(gameId);
+      
+      // Get game from database
+      const game = await DatabaseService.getGame(gameId);
       
       if (!game) {
         res.status(404).json({
@@ -189,13 +234,27 @@ export class GameController {
       // Start the game if it hasn't started yet
       if (!game.startTime) {
         game.start();
+        await DatabaseService.updateGame(game);
+      }
+      
+      // Don't allow flipping if card is already matched
+      if (card.isMatched) {
+        res.status(400).json({
+          success: false,
+          message: 'Card is already matched'
+        });
+        return;
       }
       
       // Flip the card
       card.flip();
+      await DatabaseService.updateCard(card, gameId);
       
       // Find all currently flipped cards
       const flippedCards = game.cards.filter(c => c.isFlipped && !c.isMatched);
+      
+      let isMatch = false;
+      let isComplete = false;
       
       // Check for a match if two cards are flipped
       if (flippedCards.length === 2) {
@@ -206,10 +265,20 @@ export class GameController {
           // Mark both cards as matched
           flippedCards.forEach(c => c.match());
           
+          // Update both cards in the database
+          await Promise.all(flippedCards.map(c => DatabaseService.updateCard(c, gameId)));
+          
+          isMatch = true;
+          
           // Check if the game is complete
-          game.checkCompletion();
-        } else {
-          // Flip both cards back after a delay (handled by the frontend)
+          isComplete = game.checkCompletion();
+          
+          if (isComplete) {
+            game.end();
+          }
+          
+          // Update game state in database
+          await DatabaseService.updateGame(game);
         }
       }
       
@@ -217,11 +286,14 @@ export class GameController {
         success: true,
         card: card,
         flippedCount: flippedCards.length,
-        isMatch: flippedCards.length === 2 ? flippedCards[0].pairId === flippedCards[1].pairId : false,
-        isComplete: game.isComplete,
-        moves: game.moves
+        isMatch,
+        isComplete,
+        moves: game.moves,
+        matchedPairs: game.getMatchedPairsCount(),
+        totalPairs: game.getTotalPairsCount()
       });
     } catch (error) {
+      console.error('Error in flipCard:', error);
       res.status(500).json({
         success: false,
         message: 'Error processing card flip',
@@ -235,10 +307,12 @@ export class GameController {
    * @param req Express request object
    * @param res Express response object
    */
-  public static resetGame(req: Request, res: Response): void {
+  public static async resetGame(req: Request, res: Response): Promise<void> {
     try {
       const { gameId } = req.params;
-      const game = games.get(gameId);
+      
+      // Get game from database
+      const game = await DatabaseService.getGame(gameId);
       
       if (!game) {
         res.status(404).json({
@@ -250,6 +324,9 @@ export class GameController {
       
       game.reset();
       
+      // Update game in database
+      await DatabaseService.saveGame(game);
+      
       res.status(200).json({
         success: true,
         gameId: game.id,
@@ -257,9 +334,47 @@ export class GameController {
         cards: game.cards
       });
     } catch (error) {
+      console.error('Error in resetGame:', error);
       res.status(500).json({
         success: false,
         message: 'Error resetting game',
+        error: error
+      });
+    }
+  }
+
+  /**
+   * Deletes a user's game
+   * @param req Express request object
+   * @param res Express response object
+   */
+  public static async deleteGame(req: Request, res: Response): Promise<void> {
+    try {
+      const { gameId } = req.params;
+      
+      // Get current user if authenticated
+      const user = await AuthService.getCurrentUser();
+      
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          message: 'Not authenticated'
+        });
+        return;
+      }
+      
+      // Delete the game
+      await DatabaseService.deleteGame(gameId, user.id);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Game deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error in deleteGame:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error deleting game',
         error: error
       });
     }

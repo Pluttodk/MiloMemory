@@ -16,3 +16,6 @@ Thumbs.db
 
 # Uploaded images
 src/public/uploads/
+
+supabase-deployment.md
+*.sql

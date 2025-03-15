@@ -3,65 +3,136 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Find Friends Memory Game</title>
+  <title>MiloMemory - Memory Game</title>
   <link rel="stylesheet" href="/css/styles.css">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
   <div class="container">
-    <h1>Find Friends Memory Game</h1>
-    
-    <div class="game-setup" id="gameSetup">
-      <h2>Upload Your Images</h2>
-      <p>Upload 2-10 images to create your custom memory game.</p>
-      
-      <form id="uploadForm" enctype="multipart/form-data">
-        <div class="file-input-container">
-          <input type="file" name="images" id="imageInput" multiple accept="image/*">
-          <label for="imageInput" class="btn">Select Images</label>
-          <span id="fileCount">No files selected</span>
-        </div>
-        
-        <div id="imagePreview" class="image-preview"></div>
-        
-        <button type="submit" class="btn btn-primary" id="startGameBtn" disabled>Start Game</button>
-      </form>
+    <header class="app-header">
+      <h1>MiloMemory</h1>
+      <div class="auth-buttons" id="authButtons">
+        <button class="btn" id="loginBtn">Login</button>
+        <button class="btn" id="registerBtn">Register</button>
+      </div>
+      <div class="user-profile" id="userProfile" style="display: none;">
+        <span id="userDisplayName"></span>
+        <button class="btn" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <!-- Login Modal -->
+    <div class="modal" id="loginModal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Login</h2>
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="loginEmail">Email</label>
+            <input type="email" id="loginEmail" required>
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" required>
+          </div>
+          <div class="error-message" id="loginError"></div>
+          <button type="submit" class="btn btn-primary">Login</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div class="modal" id="registerModal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Register</h2>
+        <form id="registerForm">
+          <div class="form-group">
+            <label for="registerEmail">Email</label>
+            <input type="email" id="registerEmail" required>
+          </div>
+          <div class="form-group">
+            <label for="registerPassword">Password</label>
+            <input type="password" id="registerPassword" required>
+          </div>
+          <div class="form-group">
+            <label for="registerDisplayName">Display Name</label>
+            <input type="text" id="registerDisplayName" required>
+          </div>
+          <div class="error-message" id="registerError"></div>
+          <button type="submit" class="btn btn-primary">Register</button>
+        </form>
+      </div>
     </div>
     
-    <div class="game-board-container" id="gameBoardContainer" style="display: none;">
-      <div class="game-stats">
-        <div class="stat">
-          <span>Moves:</span>
-          <span id="moveCount">0</span>
-        </div>
-        <div class="stat">
-          <span>Time:</span>
-          <span id="timer">00:00</span>
-        </div>
-        <button class="btn" id="resetBtn">Reset Game</button>
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Game Setup -->
+      <div class="game-setup" id="gameSetup">
+        <h2>Upload Your Images</h2>
+        <p>Upload 2-10 images to create your custom memory game.</p>
+        
+        <form id="uploadForm" enctype="multipart/form-data">
+          <div class="file-input-container">
+            <input type="file" name="images" id="imageInput" multiple accept="image/*">
+            <label for="imageInput" class="btn">Select Images</label>
+            <span id="fileCount">No files selected</span>
+          </div>
+          
+          <div id="imagePreview" class="image-preview"></div>
+          
+          <button type="submit" class="btn btn-primary" id="startGameBtn" disabled>Start Game</button>
+        </form>
       </div>
       
-      <div class="game-board" id="gameBoard"></div>
-    </div>
-    
-    <div class="game-complete" id="gameComplete" style="display: none;">
-      <h2>Congratulations!</h2>
-      <p>You've completed the game!</p>
-      <div class="final-stats">
-        <div class="stat">
-          <span>Total Moves:</span>
-          <span id="finalMoveCount">0</span>
+      <!-- Previous Games (Visible when logged in) -->
+      <div class="previous-games" id="previousGames" style="display: none;">
+        <h2>Your Previous Games</h2>
+        <div class="games-list" id="gamesList">
+          <!-- Games will be populated here -->
         </div>
-        <div class="stat">
-          <span>Total Time:</span>
-          <span id="finalTime">00:00</span>
-        </div>
+        <button class="btn" id="newGameBtn">Create New Game</button>
       </div>
-      <button class="btn btn-primary" id="playAgainBtn">Play Again</button>
-      <button class="btn" id="newGameBtn">New Game</button>
+      
+      <!-- Game Board -->
+      <div class="game-board-container" id="gameBoardContainer" style="display: none;">
+        <div class="game-stats">
+          <div class="stat">
+            <span>Moves:</span>
+            <span id="moveCount">0</span>
+          </div>
+          <div class="stat">
+            <span>Time:</span>
+            <span id="timer">00:00</span>
+          </div>
+          <button class="btn" id="resetBtn">Reset Game</button>
+          <button class="btn" id="backBtn">Back to Menu</button>
+        </div>
+        
+        <div class="game-board" id="gameBoard"></div>
+      </div>
+      
+      <!-- Game Complete -->
+      <div class="game-complete" id="gameComplete" style="display: none;">
+        <h2>Congratulations!</h2>
+        <p>You've completed the game!</p>
+        <div class="final-stats">
+          <div class="stat">
+            <span>Total Moves:</span>
+            <span id="finalMoveCount">0</span>
+          </div>
+          <div class="stat">
+            <span>Total Time:</span>
+            <span id="finalTime">00:00</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="playAgainBtn">Play Again</button>
+        <button class="btn" id="menuBtn">Back to Menu</button>
+      </div>
     </div>
   </div>
   
+  <script src="/js/auth.js"></script>
   <script src="/js/game.js"></script>
 </body>
 </html>

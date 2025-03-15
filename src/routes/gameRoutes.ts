@@ -25,6 +25,12 @@ gameRouter.post('/create', GameController.createGame);
 gameRouter.get('/:gameId', GameController.getGame);
 
 /**
+ * GET /api/game/user/games
+ * Endpoint for getting all games for the current user
+ */
+gameRouter.get('/user/games', GameController.getUserGames);
+
+/**
  * POST /api/game/:gameId/card/:cardId/flip
  * Endpoint for flipping a card in a game
  */
@@ -35,3 +41,9 @@ gameRouter.post('/:gameId/card/:cardId/flip', GameController.flipCard);
  * Endpoint for resetting a game
  */
 gameRouter.post('/:gameId/reset', GameController.resetGame);
+
+/**
+ * DELETE /api/game/:gameId
+ * Endpoint for deleting a user's game
+ */
+gameRouter.delete('/:gameId', GameController.deleteGame);
