@@ -4,8 +4,9 @@
   "description": "A memory game where users can upload images and match pairs",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && npm run copy-static",
+    "build": "tsc && npm run copy-static && npm run copy-env",
     "copy-static": "copyfiles -u 1 \"src/public/**/*\" dist/",
+    "copy-env": "copyfiles .env dist/",
     "dev": "nodemon --exec ts-node src/index.ts",
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
