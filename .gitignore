@@ -1,0 +1,18 @@
+# Node.js
+node_modules/
+dist/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+
+# Uploaded images
+src/public/uploads/
