@@ -14,9 +14,20 @@
       "dest": "dist/index.js"
     },
     {
+      "src": "/js/(.*)",
+      "dest": "dist/public/js/$1"
+    },
+    {
+      "src": "/css/(.*)",
+      "dest": "dist/public/css/$1"
+    },
+    {
+      "src": "/(.*\\.[a-z0-9]{2,4})$",
+      "dest": "dist/public/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "dist/public/$1",
-      "continue": true
+      "dest": "dist/index.js"
     }
   ]
 }

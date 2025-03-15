@@ -37,7 +37,9 @@ class GameServer {
       createParentPath: true,
       limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
     }));
-    this.app.use(express.static(path.join(__dirname, 'public')));
+
+    // Serve static files before API routes
+    this.app.use('/', express.static(path.join(__dirname, 'public')));
   }
 
   /**
@@ -47,7 +49,7 @@ class GameServer {
     this.app.use('/api/game', gameRouter);
     this.app.use('/api/auth', authRouter);
     
-    // Serve the main HTML file for any other route
+    // Catch-all route for SPA - must be after API routes
     this.app.get('*', (req, res) => {
       res.sendFile(path.join(__dirname, 'public', 'index.html'));
     });
